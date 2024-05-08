@@ -1,7 +1,7 @@
 import random
 import math
 
-from classes import Point, Event, Arc, Edge, PriorityQueue
+from vor_classes import Point, Event, Arc, Edge, PriorityQueue
 
 # Code source: https://github.com/jansonh/Voronoi
 
