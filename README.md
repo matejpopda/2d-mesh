@@ -12,3 +12,17 @@
 1. Ze souboru mesh_generation.py se vezme funkce generate_mesh (případně více možností), ta nějak vygeneruje mesh
 2. Používáme třídy definované v classes
 3. Ze souboru draw.py budeme pak vykreslovat
+
+# Aktuální stav
+- Voronoiovská mesh (Fortune's algorithm) - převzato z https://github.com/jansonh/Voronoi.
+- Rošíření kódu o případ s lineárním rozhraním.
+- Automatická generace náhodných bodů.
+
+   _voronoi.py: logika generování sítě_  
+  _draw.py: tkinter okno pro interaktivní vizualizaci_  
+  _vor_classes: objekty pro výpočet sítě_
+
+<p float="left">
+  <img src="img/noline.png" width="500"/>
+  <img src="img/line.png" width="500" /> 
+</p>
