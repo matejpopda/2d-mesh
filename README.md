@@ -15,7 +15,7 @@
 
 # Aktuální stav
 - Voronoiovská mesh (Fortune's algorithm) - převzato z https://github.com/jansonh/Voronoi.
-- Rošíření kódu o případ s lineárním rozhraním.
+- Rošíření kódu o případ s lineárním rozhraním. (Ale buňky na rozhraní nemají společné vrcholy.)
 - Automatická generace náhodných bodů.
 
    _voronoi.py: logika generování sítě_  
