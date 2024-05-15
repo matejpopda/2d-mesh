@@ -44,7 +44,8 @@ class MainWindow:
         self.btn_random_points = tk.Button(self.frmButton, text="Move Points", width=12, command=self.move)
         self.btn_random_points.pack(side=tk.LEFT)  
 
-        
+        self.num_points = 0
+
     def draw_line(self):
         self.y1, self.y2 = 0, self.w.winfo_height()
         self.x1, self.x2 = random.randint(0, self.w.winfo_width()),random.randint(0, self.w.winfo_width())
@@ -55,6 +56,7 @@ class MainWindow:
     def add_random_points(self):
         num_points = simpledialog.askinteger("Input", "Enter number of random points:", parent=self.master)
         if num_points is not None:
+            self.num_points = num_points
             for _ in range(num_points):
                 x = random.randint(1, self.w.winfo_width())
                 y = random.randint(1, self.w.winfo_width())
@@ -95,7 +97,7 @@ class MainWindow:
         
         for _ in range(1):
 
-            self.lines = update_lines(self.lines)
+            self.lines = self.update_lines(self.lines)
             
 
             self.w.create_rectangle((0, 0), (500, 500), fill="white")
@@ -205,85 +207,85 @@ class MainWindow:
                 self.w.create_line(adjusted_line.coords[0][0], adjusted_line.coords[0][1],
                                 adjusted_line.coords[1][0], adjusted_line.coords[1][1], fill=color)
 
-def update_lines(lines):
-    # generate points
-    points_dic = {}
+    def update_lines(self, lines):
+        # generate points
+        points_dic = {}
 
-    lengths = []
+        lengths = []
 
-    for x,y,w,u in lines:
-        lengths.append(np.sqrt((x-w)**2 + (y-u)**2))
+        for x,y,w,u in lines:
+            lengths.append(np.sqrt((x-w)**2 + (y-u)**2))
 
-        if not (x,y) in points_dic:
-            points_dic[(x,y)] = 0
-        points_dic[(x,y)] += 1
+            if not (x,y) in points_dic:
+                points_dic[(x,y)] = 0
+            points_dic[(x,y)] += 1
 
-        if not (w,u) in points_dic:
-            points_dic[(w,u)] = 0
-        points_dic[(w,u)] += 1
+            if not (w,u) in points_dic:
+                points_dic[(w,u)] = 0
+            points_dic[(w,u)] += 1
 
-    points_dic = {key:val for key, val in points_dic.items() if val != 1 and val != 2}
+        points_dic = {key:val for key, val in points_dic.items() if val != 1 and val != 2}
 
-    point_list = [k for k, v in points_dic.items()]
+        point_list = [k for k, v in points_dic.items()]
 
-    old_list = copy.deepcopy(point_list)
-    force_list = [[0,0] for k, v in points_dic.items()]
+        old_list = copy.deepcopy(point_list)
+        force_list = [[0,0] for k, v in points_dic.items()]
 
-    coeff = 10000
+        coeff = 10000
 
-    for x,y,w,u in lines:
-        dx = (x-w) / coeff 
-        dy = (y-u) / coeff 
-
-
-        try:
-            index = old_list.index((x,y))
-        except ValueError:
-            continue 
-
-        force_list[index][0] += dx
-        force_list[index][1] += dy
-        
-        try:
-            index = old_list.index((w,u))
-        except ValueError:
-            continue 
-
-        force_list[index][0] -= dx
-        force_list[index][1] -= dy
-
-    for i in range(len(point_list)):
-        # point_list[i] = (old_list[i][0]+force_list[i][0], old_list[i][1]+force_list[i][1])
-
-        point_list[i] = (old_list[i][0]+(random.random() - 0.5)*150, old_list[i][1]+(random.random() - 0.5)*15)
-
-    new_lines = []
-
-    for x,y,w,u in lines:
-
-        try:
-            index1 = old_list.index((x,y))
-            new_x = point_list[index1][0]
-            new_y = point_list[index1][1]
-
-        except ValueError:
-            new_x = x
-            new_y = y
+        for x,y,w,u in lines:
+            dx = (x-w) / coeff 
+            dy = (y-u) / coeff 
 
 
-        try:
-            index2 = old_list.index((w,u))
+            try:
+                index = old_list.index((x,y))
+            except ValueError:
+                continue 
+
+            force_list[index][0] += dx
+            force_list[index][1] += dy
             
-            new_w = point_list[index2][0]
-            new_u = point_list[index2][1]
-        except ValueError:
-            new_w = w 
-            new_u = u
+            try:
+                index = old_list.index((w,u))
+            except ValueError:
+                continue 
 
-        new_lines.append((new_x, new_y, new_w, new_u))
- 
+            force_list[index][0] -= dx
+            force_list[index][1] -= dy
+
+        for i in range(len(point_list)):
+            # point_list[i] = (old_list[i][0]+force_list[i][0], old_list[i][1]+force_list[i][1])
+
+            point_list[i] = (old_list[i][0]+(random.random() - 0.5)*150/self.num_points, old_list[i][1]+(random.random() - 0.5)*150/self.num_points)
+
+        new_lines = []
+
+        for x,y,w,u in lines:
+
+            try:
+                index1 = old_list.index((x,y))
+                new_x = point_list[index1][0]
+                new_y = point_list[index1][1]
+
+            except ValueError:
+                new_x = x
+                new_y = y
+
+
+            try:
+                index2 = old_list.index((w,u))
+                
+                new_w = point_list[index2][0]
+                new_u = point_list[index2][1]
+            except ValueError:
+                new_w = w 
+                new_u = u
+
+            new_lines.append((new_x, new_y, new_w, new_u))
+    
 
 
 
-    return new_lines
+        return new_lines
 
