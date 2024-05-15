@@ -114,7 +114,7 @@ class Voronoi:
                 i = i.pnext
             i.pnext = Arc(p, i)
             x = self.x0
-            y = (i.pnext.p.y + i.p.y) / 2.0;
+            y = (i.pnext.p.y + i.p.y) / 2.0
             start = Point(x, y)
 
             seg = Edge(start)
