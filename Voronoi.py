@@ -1,225 +1,239 @@
-import random
 import math
 
 from vor_classes import Point, Event, Arc, Edge, PriorityQueue
 
-# Code source: https://github.com/jansonh/Voronoi
-
 class Voronoi:
     def __init__(self, points):
-        self.output = [] # list of line segment
-        self.arc = None  # binary tree for parabola arcs
+        """Initialize the Voronoi diagram with given points."""
+        self.output = [] # List of line segments
+        self.arc = None  # Binary tree of parabola arcs (beachline)
 
-        self.points = PriorityQueue() # site events
-        self.event = PriorityQueue() # circle events
+        self.points = PriorityQueue() # Site events
+        self.event = PriorityQueue() # Circle events
 
-        # bounding box
+        # Initial bounding box
         self.x0 = -50.0
         self.x1 = -50.0
         self.y0 = 550.0
         self.y1 = 550.0
 
-        # insert points to site event
-        for pts in points:
-            point = Point(pts[0], pts[1])
+        # Insert points into the site event priority queue and adjust the bounding box
+        for p in points:
+            point = Point(p[0], p[1])
             self.points.push(point)
             if point.x < self.x0: self.x0 = point.x
             if point.y < self.y0: self.y0 = point.y
             if point.x > self.x1: self.x1 = point.x
             if point.y > self.y1: self.y1 = point.y
 
-        # add margins to the bounding box
-        dx = (self.x1 - self.x0 + 1) / 5.0
-        dy = (self.y1 - self.y0 + 1) / 5.0
-        self.x0 = self.x0 - dx
-        self.x1 = self.x1 + dx
-        self.y0 = self.y0 - dy
-        self.y1 = self.y1 + dy
+        # Add margins to the bounding box
+        difx = (self.x1 - self.x0 + 1) / 5.0
+        dify = (self.y1 - self.y0 + 1) / 5.0
+        self.x0 = self.x0 - difx
+        self.x1 = self.x1 + difx
+        self.y0 = self.y0 - dify
+        self.y1 = self.y1 + dify
 
-    def process(self):
+    def run_diagram(self):
+        """Run the Voronoi diagram algorithm."""
         while not self.points.empty():
             if not self.event.empty() and (self.event.top().x <= self.points.top().x):
-                self.process_event()
+                self.handle_circle_event()
             else:
-                self.process_point() 
+                self.handle_site_event() 
 
         while not self.event.empty():
-            self.process_event()
-
+            self.handle_circle_event()
         self.finish_edges()
 
-    def process_point(self):
-        p = self.points.pop()
-        self.arc_insert(p)
+    def handle_site_event(self):
+        """Handle site events by inserting new arcs."""
+        point = self.points.pop()
+        self.insert_arc(point)
 
-    def process_event(self):
-        e = self.event.pop()
+    def handle_circle_event(self):
+        """Handle circle events and remove arcs that disappear."""
+        event = self.event.pop()
+        if event.valid:
+            edge = Edge(event.p)
+            self.output.append(edge)
 
-        if e.valid:
-            s = Edge(e.p)
-            self.output.append(s)
+            arc = event.a
+            if arc.pprev is not None:
+                arc.pprev.pnext = arc.pnext
+                arc.pprev.s1 = edge
+            if arc.pnext is not None:
+                arc.pnext.pprev = arc.pprev
+                arc.pnext.s0 = edge
 
-            a = e.a
-            if a.pprev is not None:
-                a.pprev.pnext = a.pnext
-                a.pprev.s1 = s
-            if a.pnext is not None:
-                a.pnext.pprev = a.pprev
-                a.pnext.s0 = s
+            if arc.s0 is not None: arc.s0.finish(event.p)
+            if arc.s1 is not None: arc.s1.finish(event.p)
 
-            if a.s0 is not None: a.s0.finish(e.p)
-            if a.s1 is not None: a.s1.finish(e.p)
+            if arc.pprev is not None: self.check_circle_event(arc.pprev, event.x)
+            if arc.pnext is not None: self.check_circle_event(arc.pnext, event.x)
 
-            if a.pprev is not None: self.check_circle_event(a.pprev, e.x)
-            if a.pnext is not None: self.check_circle_event(a.pnext, e.x)
-
-    def arc_insert(self, p):
+    def insert_arc(self, p):
+        """Insert a new arc corresponding to a new site event."""
         if self.arc is None:
             self.arc = Arc(p)
         else:
-            i = self.arc
-            while i is not None:
-                flag, z = self.intersect(p, i)
+            current_arc = self.arc
+            while current_arc is not None:
+                flag, z = self.check_intersection(p, current_arc)
                 if flag:
-                    flag, zz = self.intersect(p, i.pnext)
-                    if (i.pnext is not None) and (not flag):
-                        i.pnext.pprev = Arc(i.p, i, i.pnext)
-                        i.pnext = i.pnext.pprev
+                    flag, zz = self.check_intersection(p, current_arc.pnext)
+                    if (current_arc.pnext is not None) and (not flag):
+                        current_arc.pnext.pprev = Arc(current_arc.p, current_arc, current_arc.pnext)
+                        current_arc.pnext = current_arc.pnext.pprev
                     else:
-                        i.pnext = Arc(i.p, i)
-                    i.pnext.s1 = i.s1
+                        current_arc.pnext = Arc(current_arc.p, current_arc)
+                    current_arc.pnext.s1 = current_arc.s1
 
-                    i.pnext.pprev = Arc(p, i, i.pnext)
-                    i.pnext = i.pnext.pprev
-                    i = i.pnext 
-
-                    seg = Edge(z)
-                    self.output.append(seg)
-                    i.pprev.s1 = i.s0 = seg
+                    current_arc.pnext.pprev = Arc(p, current_arc, current_arc.pnext)
+                    current_arc.pnext = current_arc.pnext.pprev
+                    current_arc = current_arc.pnext 
 
                     seg = Edge(z)
                     self.output.append(seg)
-                    i.pnext.s0 = i.s1 = seg
+                    current_arc.pprev.s1 = current_arc.s0 = seg
 
-                    self.check_circle_event(i, p.x)
-                    self.check_circle_event(i.pprev, p.x)
-                    self.check_circle_event(i.pnext, p.x)
+                    seg = Edge(z)
+                    self.output.append(seg)
+                    current_arc.pnext.s0 = current_arc.s1 = seg
+
+                    self.check_circle_event(current_arc, p.x)
+                    self.check_circle_event(current_arc.pprev, p.x)
+                    self.check_circle_event(current_arc.pnext, p.x)
 
                     return
                         
-                i = i.pnext
+                current_arc = current_arc.pnext
 
-            i = self.arc
-            while i.pnext is not None:
-                i = i.pnext
-            i.pnext = Arc(p, i)
+            current_arc = self.arc
+            while current_arc.pnext is not None:
+                current_arc = current_arc.pnext
+            current_arc.pnext = Arc(p, current_arc)
             x = self.x0
-            y = (i.pnext.p.y + i.p.y) / 2.0
+            y = (current_arc.pnext.p.y + current_arc.p.y) / 2.0
             start = Point(x, y)
 
-            seg = Edge(start)
-            i.s1 = i.pnext.s0 = seg
-            self.output.append(seg)
+            edge = Edge(start)
+            current_arc.s1 = current_arc.pnext.s0 = edge
+            self.output.append(edge)
 
-    def check_circle_event(self, i, x0):
-        if (i.e is not None) and (i.e.x != self.x0):
-            i.e.valid = False
-        i.e = None
+    def check_circle_event(self, arc, x_sweep):
+        """Check and add valid circle events to the priority queue."""
+        if (arc.edge is not None) and (arc.edge.x != self.x0):
+            arc.edge.valid = False
+        arc.edge = None
 
-        if (i.pprev is None) or (i.pnext is None): return
+        if (arc.pprev is None) or (arc.pnext is None): return
 
-        flag, x, o = self.circle(i.pprev.p, i.p, i.pnext.p)
+        flag, x, o = self.compute_circle(arc.pprev.p, arc.p, arc.pnext.p)
         if flag and (x > self.x0):
-            i.e = Event(x, o, i)
-            self.event.push(i.e)
+            arc.edge = Event(x, o, arc)
+            self.event.push(arc.edge)
 
-    def circle(self, a, b, c):
-        if ((b.x - a.x)*(c.y - a.y) - (c.x - a.x)*(b.y - a.y)) > 0: return False, None, None
+    def compute_circle(self, pointA, pointB, pointC):
+        """Calculate the circle defined by points pointA, pointB, and pointC."""
+        if ((pointB.x - pointA.x) * (pointC.y - pointA.y) - (pointC.x - pointA.x) * (pointB.y - pointA.y)) > 0:
+            return False, None, None
 
-        A = b.x - a.x
-        B = b.y - a.y
-        C = c.x - a.x
-        D = c.y - a.y
-        E = A*(a.x + b.x) + B*(a.y + b.y)
-        F = C*(a.x + c.x) + D*(a.y + c.y)
-        G = 2*(A*(c.y - b.y) - B*(c.x - b.x))
+        deltaX_AB = pointB.x - pointA.x
+        deltaY_AB = pointB.y - pointA.y
+        deltaX_AC = pointC.x - pointA.x
+        deltaY_AC = pointC.y - pointA.y
+        productX = deltaX_AB * (pointA.x + pointB.x) + deltaY_AB * (pointA.y + pointB.y)
+        productY = deltaX_AC * (pointA.x + pointC.x) + deltaY_AC * (pointA.y + pointC.y)
+        denominator = 2 * (deltaX_AB * (pointC.y - pointB.y) - deltaY_AB * (pointC.x - pointB.x))
 
-        if (G == 0): return False, None, None 
+        if denominator == 0:
+            return False, None, None
 
-        ox = 1.0 * (D*E - B*F) / G
-        oy = 1.0 * (A*F - C*E) / G
+        centerX = (deltaY_AC * productX - deltaY_AB * productY) / denominator
+        centerY = (deltaX_AB * productY - deltaX_AC * productX) / denominator
 
-        x = ox + math.sqrt((a.x-ox)**2 + (a.y-oy)**2)
-        o = Point(ox, oy)
-           
-        return True, x, o
+        radius_squared = (pointA.x - centerX) ** 2 + (pointA.y - centerY) ** 2
+        radius = math.sqrt(radius_squared)
+        center = Point(centerX, centerY)
+
+        return True, radius + centerX, center
         
-    def intersect(self, p, i):
-        
-        if (i is None): return False, None
-        if (i.p.x == p.x): return False, None
+    def check_intersection(self, new_site, existing_arc):
+        """Check if a new site event intersects with an existing arc."""
+        if existing_arc is None:
+            return False, None
+        if existing_arc.p.x == new_site.x:
+            return False, None
 
-        a = 0.0
-        b = 0.0
+        y_intersection_above = 0.0
+        y_intersection_below = 0.0
 
-        if i.pprev is not None:
-            a = (self.intersection(i.pprev.p, i.p, 1.0*p.x)).y
-        if i.pnext is not None:
-            b = (self.intersection(i.p, i.pnext.p, 1.0*p.x)).y
+        if existing_arc.pprev is not None:
+            y_intersection_above = (self.parabola_intersection(existing_arc.pprev.p, existing_arc.p, 1.0 * new_site.x)).y
+        if existing_arc.pnext is not None:
+            y_intersection_below = (self.parabola_intersection(existing_arc.p, existing_arc.pnext.p, 1.0 * new_site.x)).y
 
-        if (((i.pprev is None) or (a <= p.y)) and ((i.pnext is None) or (p.y <= b))):
-            py = p.y
-            px = 1.0 * ((i.p.x)**2 + (i.p.y-py)**2 - p.x**2) / (2*i.p.x - 2*p.x)
-            res = Point(px, py)
-            return True, res
+        if (((existing_arc.pprev is None) or (y_intersection_above <= new_site.y)) and
+            ((existing_arc.pnext is None) or (new_site.y <= y_intersection_below))):
+            intersection_y = new_site.y
+            intersection_x = ((existing_arc.p.x ** 2 + (existing_arc.p.y - intersection_y) ** 2 - new_site.x ** 2)
+                            / (2 * existing_arc.p.x - 2 * new_site.x))
+            intersection_point = Point(intersection_x, intersection_y)
+            return True, intersection_point
         return False, None
 
-    def intersection(self, p0, p1, l):
-        # get the intersection of two parabolas
-        p = p0
-        if (p0.x == p1.x):
-            py = (p0.y + p1.y) / 2.0
-        elif (p1.x == l):
-            py = p1.y
-        elif (p0.x == l):
-            py = p0.y
-            p = p1
+    def parabola_intersection(self, point1, point2, directrix):
+        """Compute the intersection of two parabolas defined by point1, point2 and the directrix."""
+        if point1.x == point2.x:
+            intersection_y = (point1.y + point2.y) / 2.0
+        elif point2.x == directrix:
+            intersection_y = point2.y
+        elif point1.x == directrix:
+            intersection_y = point1.y
         else:
-            # use quadratic formula
-            z0 = 2.0 * (p0.x - l)
-            z1 = 2.0 * (p1.x - l)
+            denom1 = 2.0 * (point1.x - directrix)
+            denom2 = 2.0 * (point2.x - directrix)
 
-            a = 1.0/z0 - 1.0/z1;
-            b = -2.0 * (p0.y/z0 - p1.y/z1)
-            c = 1.0 * (p0.y**2 + p0.x**2 - l**2) / z0 - 1.0 * (p1.y**2 + p1.x**2 - l**2) / z1
+            a_coeff = 1.0 / denom1 - 1.0 / denom2
+            b_coeff = -2.0 * (point1.y / denom1 - point2.y / denom2)
+            c_coeff = ((point1.y ** 2 + point1.x ** 2 - directrix ** 2) / denom1
+                    - (point2.y ** 2 + point2.x ** 2 - directrix ** 2) / denom2)
 
-            py = 1.0 * (-b-math.sqrt(b*b - 4*a*c)) / (2*a)
+            discriminant = b_coeff ** 2 - 4 * a_coeff * c_coeff
+            intersection_y = (-b_coeff - math.sqrt(discriminant)) / (2 * a_coeff)
             
-        px = 1.0 * (p.x**2 + (p.y-py)**2 - l**2) / (2*p.x-2*l)
-        res = Point(px, py)
-        return res
+        intersection_x = ((point1.x ** 2 + (point1.y - intersection_y) ** 2 - directrix ** 2)
+                        / (2 * point1.x - 2 * directrix))
+        intersection_point = Point(intersection_x, intersection_y)
+        
+        return intersection_point
 
     def finish_edges(self):
-        l = self.x1 + (self.x1 - self.x0) + (self.y1 - self.y0)
-        i = self.arc
-        while i.pnext is not None:
-            if i.s1 is not None:
-                p = self.intersection(i.p, i.pnext.p, l*2.0)
-                i.s1.finish(p)
-            i = i.pnext
-
-    def print_output(self):
-        it = 0
-        for o in self.output:
-            it = it + 1
-            p0 = o.start
-            p1 = o.end
-            print (p0.x, p0.y, p1.x, p1.y)
+        """Finish the remaining edges of the Voronoi diagram."""
+        boundary_length = self.x1 + (self.x1 - self.x0) + (self.y1 - self.y0)
+        current_arc = self.arc
+    
+        while current_arc.pnext is not None:
+            if current_arc.s1 is not None:
+                intersection_point = self.parabola_intersection(current_arc.p, current_arc.pnext.p, boundary_length * 2.0)
+                current_arc.s1.finish(intersection_point)
+            current_arc = current_arc.pnext
+            
+    def disp_output(self):
+        """Display the generated Voronoi diagram edges."""
+        edge_index = 0
+        for edge in self.output:
+            edge_index += 1
+            start_point = edge.start
+            end_point = edge.end
+            print(start_point.x, start_point.y, end_point.x, end_point.y)
 
     def get_output(self):
+        """Get the list of edges in the Voronoi diagram."""
         res = []
-        for o in self.output:
-            p0 = o.start
-            p1 = o.end
-            res.append((p0.x, p0.y, p1.x, p1.y))
+        for out in self.output:
+            start_point = out.start
+            end_point = out.end
+            res.append((start_point.x, start_point.y, end_point.x, end_point.y))
         return res
