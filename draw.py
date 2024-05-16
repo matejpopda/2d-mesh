@@ -69,12 +69,12 @@ class MainWindow:
             if self.divided == True:
                 points_left, points_right = self.classify_points()
                 vp = Voronoi(points_left)
-                vp.process()
+                vp.run_diagram()
                 lines = vp.get_output()
                 self.draw_adjusted_lines(lines,[self.x1,self.y1,self.x2,self.y2],'A')
                 self.lines = lines
                 vp = Voronoi(points_right)
-                vp.process()
+                vp.run_diagram()
                 lines = vp.get_output()
                 self.lines = self.lines + lines
                 self.draw_adjusted_lines(lines,[self.x1,self.y1,self.x2,self.y2],'B')
@@ -86,7 +86,7 @@ class MainWindow:
                     points.append((coord[0]+self.RADIUS, coord[1]+self.RADIUS))
                     
                 vp = Voronoi(points)
-                vp.process()
+                vp.run_diagram()
                 lines = vp.get_output()
                 self.lines = lines
                 self.drawLinesOnCanvas(lines)
@@ -102,10 +102,6 @@ class MainWindow:
 
             self.w.create_rectangle((0, 0), (500, 500), fill="white")
             self.drawLinesOnCanvas(self.lines)
-
-
-
-
             # time.sleep(0.1)
 
 
