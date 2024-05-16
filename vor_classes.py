@@ -10,34 +10,6 @@ class Point:
        self.y = y
        self.edges = list()
 
-class Event:
-    x = 0.0
-    p = None
-    a = None
-    valid = True
-    
-    def __init__(self, x, p, a):
-        self.x = x
-        self.p = p
-        self.a = a
-        self.valid = True
-
-class Arc:
-    p = None
-    pprev = None
-    pnext = None
-    e = None
-    s0 = None
-    s1 = None
-    
-    def __init__(self, p, a=None, b=None):
-        self.p = p
-        self.pprev = a
-        self.pnext = b
-        self.e = None
-        self.s0 = None
-        self.s1 = None
-
 class Edge:
     start = None
     end = None
@@ -55,42 +27,76 @@ class Edge:
         self.done = True 
         self.end.edges.append(self)  
 
+class Arc:
+    p = None
+    pprev = None
+    pnext = None
+    edge = None
+    s0 = None
+    s1 = None
+    
+    def __init__(self, p, a=None, b=None):
+        self.p = p
+        self.pprev = a
+        self.pnext = b
+        self.edge = None
+        self.s0 = None
+        self.s1 = None
+
+class Event:
+    x = 0.0
+    p = None
+    a = None
+    valid = True
+    
+    def __init__(self, x, p, a):
+        self.x = x
+        self.p = p
+        self.a = a
+        self.valid = True
+
 class PriorityQueue:
     def __init__(self):
-        self.pq = []
-        self.entry_finder = {}
-        self.counter = itertools.count()
-
-    def push(self, item):
-        # check for duplicate
-        if item in self.entry_finder: return
-        count = next(self.counter)
-        # use x-coordinate as a primary key (heapq in python is min-heap)
-        entry = [item.x, count, item]
-        self.entry_finder[item] = entry
-        heapq.heappush(self.pq, entry)
-
-    def remove_entry(self, item):
-        entry = self.entry_finder.pop(item)
-        entry[-1] = 'Removed'
-
-    def pop(self):
-        while self.pq:
-            priority, count, item = heapq.heappop(self.pq)
-            if item is not 'Removed':
-                del self.entry_finder[item]
-                return item
-        raise KeyError('pop from an empty priority queue')
-
-    def top(self):
-        while self.pq:
-            priority, count, item = heapq.heappop(self.pq)
-            if item is not 'Removed':
-                del self.entry_finder[item]
-                self.push(item)
-                return item
-        raise KeyError('top from an empty priority queue')
+        self.heap = [] 
+        self.entry_map = {}  
+        self.unique_counter = itertools.count()  
 
     def empty(self):
-        return not self.pq
+        """Return true if the priority queue is empty."""
+        return not self.heap
+    
+    def push(self, item):
+        """Add an item to the priority queue."""
+        if item in self.entry_map:
+            return  # Avoid duplicates
+        count = next(self.unique_counter)
+        entry = [item.x, count, item]
+        self.entry_map[item] = entry
+        heapq.heappush(self.heap, entry)
+
+    def remove_entry(self, item):
+        """Mark an existing item as removed."""
+        entry = self.entry_map.pop(item)
+        entry[-1] = 'Removed'
+
+    def top(self):
+        """Return the lowest priority item without removing it."""
+        while self.heap:
+            _, _, item = heapq.heappop(self.heap)
+            if item is not 'Removed':
+                del self.entry_map[item]
+                self.push(item)  # Reinsert 
+                return item
+            
+    def pop(self):
+        """Remove and return the lowest priority item."""
+        while self.heap:
+            _, _, item = heapq.heappop(self.heap)
+            if item is not 'Removed':
+                del self.entry_map[item]
+                return item
+
+    
+
+    
             
