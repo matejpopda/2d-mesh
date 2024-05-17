@@ -14,7 +14,3 @@
   - popsat algoritmus
   - demonstrace (pozor, pro velké množství bodů padá na 'noneType' - nepodařilo se odstranit :(( )
   - (obrázky porovnání s numpy algoritmem)
-
-
-
-  

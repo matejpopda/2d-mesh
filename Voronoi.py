@@ -2,14 +2,15 @@ import math
 
 from vor_classes import Point, Event, Arc, Edge, PriorityQueue
 
+
 class Voronoi:
     def __init__(self, points):
         """Initialize the Voronoi diagram with given points."""
-        self.output = [] # List of line segments
+        self.output = []  # List of line segments
         self.arc = None  # Binary tree of parabola arcs (beachline)
 
-        self.points = PriorityQueue() # Site events
-        self.event = PriorityQueue() # Circle events
+        self.points = PriorityQueue()  # Site events
+        self.event = PriorityQueue()  # Circle events
 
         # Initial bounding box
         self.x0 = -50.0
@@ -21,10 +22,14 @@ class Voronoi:
         for p in points:
             point = Point(p[0], p[1])
             self.points.push(point)
-            if point.x < self.x0: self.x0 = point.x
-            if point.y < self.y0: self.y0 = point.y
-            if point.x > self.x1: self.x1 = point.x
-            if point.y > self.y1: self.y1 = point.y
+            if point.x < self.x0:
+                self.x0 = point.x
+            if point.y < self.y0:
+                self.y0 = point.y
+            if point.x > self.x1:
+                self.x1 = point.x
+            if point.y > self.y1:
+                self.y1 = point.y
 
         # Add margins to the bounding box
         difx = (self.x1 - self.x0 + 1) / 5.0
@@ -40,7 +45,7 @@ class Voronoi:
             if not self.event.empty() and (self.event.top().x <= self.points.top().x):
                 self.handle_circle_event()
             else:
-                self.handle_site_event() 
+                self.handle_site_event()
 
         while not self.event.empty():
             self.handle_circle_event()
@@ -66,11 +71,15 @@ class Voronoi:
                 arc.pnext.pprev = arc.pprev
                 arc.pnext.s0 = edge
 
-            if arc.s0 is not None: arc.s0.finish(event.p)
-            if arc.s1 is not None: arc.s1.finish(event.p)
+            if arc.s0 is not None:
+                arc.s0.finish(event.p)
+            if arc.s1 is not None:
+                arc.s1.finish(event.p)
 
-            if arc.pprev is not None: self.check_circle_event(arc.pprev, event.x)
-            if arc.pnext is not None: self.check_circle_event(arc.pnext, event.x)
+            if arc.pprev is not None:
+                self.check_circle_event(arc.pprev, event.x)
+            if arc.pnext is not None:
+                self.check_circle_event(arc.pnext, event.x)
 
     def insert_arc(self, p):
         """Insert a new arc corresponding to a new site event."""
@@ -83,7 +92,9 @@ class Voronoi:
                 if flag:
                     flag, zz = self.check_intersection(p, current_arc.pnext)
                     if (current_arc.pnext is not None) and (not flag):
-                        current_arc.pnext.pprev = Arc(current_arc.p, current_arc, current_arc.pnext)
+                        current_arc.pnext.pprev = Arc(
+                            current_arc.p, current_arc, current_arc.pnext
+                        )
                         current_arc.pnext = current_arc.pnext.pprev
                     else:
                         current_arc.pnext = Arc(current_arc.p, current_arc)
@@ -91,7 +102,7 @@ class Voronoi:
 
                     current_arc.pnext.pprev = Arc(p, current_arc, current_arc.pnext)
                     current_arc.pnext = current_arc.pnext.pprev
-                    current_arc = current_arc.pnext 
+                    current_arc = current_arc.pnext
 
                     seg = Edge(z)
                     self.output.append(seg)
@@ -106,7 +117,7 @@ class Voronoi:
                     self.check_circle_event(current_arc.pnext, p.x)
 
                     return
-                        
+
                 current_arc = current_arc.pnext
 
             current_arc = self.arc
@@ -127,7 +138,8 @@ class Voronoi:
             arc.edge.valid = False
         arc.edge = None
 
-        if (arc.pprev is None) or (arc.pnext is None): return
+        if (arc.pprev is None) or (arc.pnext is None):
+            return
 
         flag, x, o = self.compute_circle(arc.pprev.p, arc.p, arc.pnext.p)
         if flag and (x > self.x0):
@@ -136,7 +148,10 @@ class Voronoi:
 
     def compute_circle(self, pointA, pointB, pointC):
         """Calculate the circle defined by points pointA, pointB, and pointC."""
-        if ((pointB.x - pointA.x) * (pointC.y - pointA.y) - (pointC.x - pointA.x) * (pointB.y - pointA.y)) > 0:
+        if (
+            (pointB.x - pointA.x) * (pointC.y - pointA.y)
+            - (pointC.x - pointA.x) * (pointB.y - pointA.y)
+        ) > 0:
             return False, None, None
 
         deltaX_AB = pointB.x - pointA.x
@@ -145,7 +160,9 @@ class Voronoi:
         deltaY_AC = pointC.y - pointA.y
         productX = deltaX_AB * (pointA.x + pointB.x) + deltaY_AB * (pointA.y + pointB.y)
         productY = deltaX_AC * (pointA.x + pointC.x) + deltaY_AC * (pointA.y + pointC.y)
-        denominator = 2 * (deltaX_AB * (pointC.y - pointB.y) - deltaY_AB * (pointC.x - pointB.x))
+        denominator = 2 * (
+            deltaX_AB * (pointC.y - pointB.y) - deltaY_AB * (pointC.x - pointB.x)
+        )
 
         if denominator == 0:
             return False, None, None
@@ -158,7 +175,7 @@ class Voronoi:
         center = Point(centerX, centerY)
 
         return True, radius + centerX, center
-        
+
     def check_intersection(self, new_site, existing_arc):
         """Check if a new site event intersects with an existing arc."""
         if existing_arc is None:
@@ -170,15 +187,27 @@ class Voronoi:
         y_intersection_below = 0.0
 
         if existing_arc.pprev is not None:
-            y_intersection_above = (self.parabola_intersection(existing_arc.pprev.p, existing_arc.p, 1.0 * new_site.x)).y
+            y_intersection_above = (
+                self.parabola_intersection(
+                    existing_arc.pprev.p, existing_arc.p, 1.0 * new_site.x
+                )
+            ).y
         if existing_arc.pnext is not None:
-            y_intersection_below = (self.parabola_intersection(existing_arc.p, existing_arc.pnext.p, 1.0 * new_site.x)).y
+            y_intersection_below = (
+                self.parabola_intersection(
+                    existing_arc.p, existing_arc.pnext.p, 1.0 * new_site.x
+                )
+            ).y
 
-        if (((existing_arc.pprev is None) or (y_intersection_above <= new_site.y)) and
-            ((existing_arc.pnext is None) or (new_site.y <= y_intersection_below))):
+        if ((existing_arc.pprev is None) or (y_intersection_above <= new_site.y)) and (
+            (existing_arc.pnext is None) or (new_site.y <= y_intersection_below)
+        ):
             intersection_y = new_site.y
-            intersection_x = ((existing_arc.p.x ** 2 + (existing_arc.p.y - intersection_y) ** 2 - new_site.x ** 2)
-                            / (2 * existing_arc.p.x - 2 * new_site.x))
+            intersection_x = (
+                existing_arc.p.x**2
+                + (existing_arc.p.y - intersection_y) ** 2
+                - new_site.x**2
+            ) / (2 * existing_arc.p.x - 2 * new_site.x)
             intersection_point = Point(intersection_x, intersection_y)
             return True, intersection_point
         return False, None
@@ -197,29 +226,33 @@ class Voronoi:
 
             a_coeff = 1.0 / denom1 - 1.0 / denom2
             b_coeff = -2.0 * (point1.y / denom1 - point2.y / denom2)
-            c_coeff = ((point1.y ** 2 + point1.x ** 2 - directrix ** 2) / denom1
-                    - (point2.y ** 2 + point2.x ** 2 - directrix ** 2) / denom2)
+            c_coeff = (point1.y**2 + point1.x**2 - directrix**2) / denom1 - (
+                point2.y**2 + point2.x**2 - directrix**2
+            ) / denom2
 
-            discriminant = b_coeff ** 2 - 4 * a_coeff * c_coeff
+            discriminant = b_coeff**2 - 4 * a_coeff * c_coeff
             intersection_y = (-b_coeff - math.sqrt(discriminant)) / (2 * a_coeff)
-            
-        intersection_x = ((point1.x ** 2 + (point1.y - intersection_y) ** 2 - directrix ** 2)
-                        / (2 * point1.x - 2 * directrix))
+
+        intersection_x = (
+            point1.x**2 + (point1.y - intersection_y) ** 2 - directrix**2
+        ) / (2 * point1.x - 2 * directrix)
         intersection_point = Point(intersection_x, intersection_y)
-        
+
         return intersection_point
 
     def finish_edges(self):
         """Finish the remaining edges of the Voronoi diagram."""
         boundary_length = self.x1 + (self.x1 - self.x0) + (self.y1 - self.y0)
         current_arc = self.arc
-    
+
         while current_arc.pnext is not None:
             if current_arc.s1 is not None:
-                intersection_point = self.parabola_intersection(current_arc.p, current_arc.pnext.p, boundary_length * 2.0)
+                intersection_point = self.parabola_intersection(
+                    current_arc.p, current_arc.pnext.p, boundary_length * 2.0
+                )
                 current_arc.s1.finish(intersection_point)
             current_arc = current_arc.pnext
-            
+
     def disp_output(self):
         """Display the generated Voronoi diagram edges."""
         edge_index = 0
