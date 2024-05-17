@@ -308,8 +308,8 @@ class MainWindow:
             # point_list[i] = (old_list[i][0]+force_list[i][0], old_list[i][1]+force_list[i][1])
 
             point_list[i] = (
-                old_list[i][0] + (random.random() - 0.5) * 150 / self.num_points,
-                old_list[i][1] + (random.random() - 0.5) * 150 / self.num_points,
+                old_list[i][0] + (random.random() - 0.5) * 150 / max(self.num_points, 1),
+                old_list[i][1] + (random.random() - 0.5) * 150 / max(self.num_points, 1),
             )
 
         new_lines = []
